@@ -4,68 +4,60 @@
 #include "hardware/timer.h"
 #include "hardware/clocks.h"
 
+
+#include "rotary.h"
+
 int Aarr[] = { 19, 18, 27, 28, 0 };
 int Barr[] = { 10, 20, 26, 29, 1 };
-int states[] = { 0, 0, 0, 0, 0 };
 
 int SWarr[] = { 6, 5, 4, 3, 2, 7, 8, 9 };
 
-bool swlock = false;
+std::vector<Encoder> encoders;
 
+bool SWDlock = false;
+bool SWUlock = false;
 void initPin(int x);
 void gpio_callback(uint gpio, uint32_t events);
 
 
 bool rotlock = false;
 
-int64_t unlcokSW(alarm_id_t id, __unused void* user_data) {
-    swlock = false;
+
+int64_t unlcokSWD(alarm_id_t id, __unused void* user_data) {
+    SWDlock = false;
+    return 0;
+}
+int64_t unlcokSWU(alarm_id_t id, __unused void* user_data) {
+    SWUlock = false;
     return 0;
 }
 
+
 int main() {
     stdio_init_all();
-
-
-    gpio_set_irq_enabled_with_callback(Aarr[0], GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
-
-    int state = 0;
-    int a;
-    int b;
     for (int i = 0; i < 5; i++) {
-        initPin(Aarr[i]);
-        initPin(Barr[i]);
-        a = gpio_get(Aarr[i]);
-        b = gpio_get(Barr[i]);
-        if (!a && !b) {
-            state = 3;
-        } else if (a && !b) {
-            state = 2;
-        } else if (!a && b) {
-            state = 1;
-        }
-        states[i] = state;
-        gpio_set_irq_enabled(Aarr[i], GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-        gpio_set_irq_enabled(Barr[i], GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+        encoders.push_back(Encoder(
+            Aarr[i],
+            Barr[i],
+            [&i]() {printf("%d left\n", i);},
+            [&i]() {printf("%d right\n", i);},
+            &gpio_callback
+        ));
     }
 
     for (int i = 0; i < 8; i++) {
         initPin(SWarr[i]);
-        gpio_set_irq_enabled(SWarr[i], GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+        gpio_set_irq_enabled_with_callback(SWarr[i], GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
     }
 
     while (true) {
-        //printf("hello\n");
         sleep_ms(10);
     }
 }
 
 void gpio_callback(uint gpio, uint32_t events) {
-    int encoder = -1;
     for (int i = 0; i < 5; i++) {
-        if (gpio == Aarr[i] || gpio == Barr[i]) {
-            encoder = i;
-        }
+        encoders.at(i).check(gpio, events);
     }
     int sw = -1;
     for (int i = 0; i < 8; i++) {
@@ -73,57 +65,25 @@ void gpio_callback(uint gpio, uint32_t events) {
             sw = i;
         }
     }
-    if (!swlock) {
-        swlock = true;
-        if (sw >= 0 && events & GPIO_IRQ_EDGE_FALL) {
-            printf("SW%d down\n", sw);
-        } else if (sw >= 0 && events & GPIO_IRQ_EDGE_RISE) {
-            printf("SW%d up\n", sw);
-        }
-        add_alarm_in_ms(2, unlcokSW, NULL, false);
 
+    if (sw >= 0 && events & GPIO_IRQ_EDGE_FALL && !SWDlock) {
+        SWDlock = true;
+        if (sw < 5) {
+            printf("rot%d down\n", sw + 1);
+        } else {
+            printf("SW%d down\n", sw - 4);
+        }
+        add_alarm_in_ms(100, unlcokSWD, NULL, false);
+    } else if (sw >= 0 && events & GPIO_IRQ_EDGE_RISE && !SWUlock) {
+        SWUlock = true;
+        if (sw < 5) {
+            printf("rot%d up\n", sw + 1);
+        } else {
+            printf("SW%d up\n", sw - 4);
+        }
+        add_alarm_in_ms(100, unlcokSWU, NULL, false);
     }
 
-    if (encoder == -1) {
-        return;
-    }
-    int state = 0;
-    int a = gpio_get(Aarr[encoder]);
-    int b = gpio_get(Barr[encoder]);
-    if (!a && !b) {
-        state = 3;
-    } else if (a && !b) {
-        state = 2;
-    } else if (!a && b) {
-        state = 1;
-    }
-    if (state == states[encoder]) return;
-    if (states[encoder] == 0) {
-        if (state == 2) {
-            printf("%d right\n", encoder + 1);
-        } else if (state == 1) {
-            printf("%d left\n", encoder + 1);
-        }
-    } else if (states[encoder] == 1) {
-        if (state == 0) {
-            printf("%d right\n", encoder + 1);
-        } else if (state == 3) {
-            printf("%d left\n", encoder + 1);
-        }
-    } else if (states[encoder] == 2) {
-        if (state == 3) {
-            printf("%d right\n", encoder + 1);
-        } else if (state == 0) {
-            printf("%d left\n", encoder + 1);
-        }
-    } else if (states[encoder] == 3) {
-        if (state == 1) {
-            printf("%d right\n", encoder + 1);
-        } else if (state == 2) {
-            printf("%d left\n", encoder + 1);
-        }
-    }
-    states[encoder] = state;
 
 }
 
