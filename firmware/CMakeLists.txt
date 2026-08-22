@@ -28,7 +28,7 @@ set(PICO_BOARD adafruit_kb2040 CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(FeatureDeck-fw C CXX ASM)
+project(FeatureDeck C CXX ASM)
 
 set(PICO_CXX_ENABLE_EXCEPTIONS 1)
 
@@ -37,26 +37,26 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(FeatureDeck-fw main.cpp   usb_descriptors.c)
+add_executable(FeatureDeck main.cpp   usb_descriptors.c)
 
-pico_set_program_name(FeatureDeck-fw "FeatureDeck-fw")
-pico_set_program_version(FeatureDeck-fw "0.1")
+pico_set_program_name(FeatureDeck "FeatureDeck")
+pico_set_program_version(FeatureDeck "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(FeatureDeck-fw 1)
-pico_enable_stdio_usb(FeatureDeck-fw 0)
+pico_enable_stdio_uart(FeatureDeck 1)
+pico_enable_stdio_usb(FeatureDeck 0)
 
 # Add the standard library to the build
-target_link_libraries(FeatureDeck-fw
+target_link_libraries(FeatureDeck
         pico_stdlib)
 
 # Add the standard include files to the build
-target_include_directories(FeatureDeck-fw PRIVATE
+target_include_directories(FeatureDeck PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
 # Add any user requested libraries
-target_link_libraries(FeatureDeck-fw 
+target_link_libraries(FeatureDeck 
         hardware_pio
         hardware_timer
         hardware_clocks
@@ -64,5 +64,5 @@ target_link_libraries(FeatureDeck-fw
         tinyusb_board
         )
 
-pico_add_extra_outputs(FeatureDeck-fw)
+pico_add_extra_outputs(FeatureDeck)
 
