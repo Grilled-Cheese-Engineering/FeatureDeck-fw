@@ -16,7 +16,7 @@ int SWarr[] = { 6, 5, 4, 3, 2, 7, 8, 9 };
 int SWstates[] = { -1, -1, -1, -1, -1, -1, -1, -1 };
 std::vector<Encoder> encoders;
 
-uint8_t msg[4];
+uint8_t msg[3];
 
 bool SWlock = false;
 void initPin(int x);
@@ -36,10 +36,30 @@ int main() {
         encoders.push_back(Encoder(
             Aarr[i],
             Barr[i],
-            [x = i + 1]() {printf("%d left\n", x);},
-            [x = i + 1]() {printf("%d right\n", x);},
-            &gpio_callback
-        ));
+            [x = i + 1]() {
+                uint8_t msg[3];
+                msg[0] = 0x90;
+                msg[1] = (x * 2) - 2;
+                msg[2] = 127;
+                tud_midi_n_stream_write(0, 0, msg, 3);
+                msg[0] = 0x80;
+                msg[1] = (x * 2) - 2;
+                msg[2] = 0;
+                tud_midi_n_stream_write(0, 0, msg, 3);
+
+            }, [x = i + 1]() {
+                uint8_t msg[3];
+                msg[0] = 0x90;
+                msg[1] = (x * 2) - 1;
+                msg[2] = 127;
+                tud_midi_n_stream_write(0, 0, msg, 3);
+                msg[0] = 0x80;
+                msg[1] = (x * 2) - 1;
+                msg[2] = 0;
+                tud_midi_n_stream_write(0, 0, msg, 3);
+                },
+                &gpio_callback
+                ));
     }
 
     for (int i = 0; i < 8; i++) {
@@ -68,19 +88,17 @@ void gpio_callback(uint gpio, uint32_t events) {
     if (sw >= 0 && !SWlock) {
         if (events & GPIO_IRQ_EDGE_FALL && (SWstates[sw] == 1 || SWstates[sw] == -1)) {
             SWlock = true;
-            msg[0] = 0x09;
-            msg[1] = 0x90;
-            msg[2] = 1;
-            msg[3] = 0x7F;
-            tud_midi_n_stream_write(0, 0, msg, 4);
+            msg[0] = 0x90;
+            msg[1] = (uint8_t)(10 + sw);
+            msg[2] = 127;
+            tud_midi_n_stream_write(0, 0, msg, 3);
             SWstates[sw] = 0;
         } else if (events & GPIO_IRQ_EDGE_RISE && SWstates[sw] == 0) {
             SWlock = true;
-            msg[0] = 0x08;
-            msg[1] = 0x80;
-            msg[2] = 1;
-            msg[3] = 0x0; // Velocity
-            tud_midi_n_stream_write(0, 0, msg, 4);
+            msg[0] = 0x80;
+            msg[1] = (uint8_t)(10 + sw);
+            msg[2] = 0;
+            tud_midi_n_stream_write(0, 0, msg, 3);
             SWstates[sw] = 1;
         }
         add_alarm_in_ms(10, unlcokSW, NULL, false);
