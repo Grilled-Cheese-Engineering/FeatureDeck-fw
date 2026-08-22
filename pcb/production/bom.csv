@@ -1,0 +1,4 @@
+﻿Designator,Footprint,Quantity,Value,LCSC Part #
+"S1, S2, S3",MX_Hotswap_1.75u,3,~,
+"SW1, SW2, SW3, SW4, SW5",SW-TH_PEC11R-4XXXF-SXXXX,5,RotaryEncoder,
+U1,Adafruit_KB2040_SMD,1,~,
