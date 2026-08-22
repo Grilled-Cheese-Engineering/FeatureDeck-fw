@@ -37,14 +37,14 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(FeatureDeck-fw main.cpp )
+add_executable(FeatureDeck-fw main.cpp   usb_descriptors.c)
 
 pico_set_program_name(FeatureDeck-fw "FeatureDeck-fw")
 pico_set_program_version(FeatureDeck-fw "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(FeatureDeck-fw 1)
-pico_enable_stdio_usb(FeatureDeck-fw 1)
+pico_enable_stdio_usb(FeatureDeck-fw 0)
 
 # Add the standard library to the build
 target_link_libraries(FeatureDeck-fw
@@ -60,6 +60,8 @@ target_link_libraries(FeatureDeck-fw
         hardware_pio
         hardware_timer
         hardware_clocks
+        tinyusb_device 
+        tinyusb_board
         )
 
 pico_add_extra_outputs(FeatureDeck-fw)

@@ -4,6 +4,8 @@
 #include "hardware/timer.h"
 #include "hardware/clocks.h"
 
+#include "bsp/board.h"
+#include "tusb.h"
 
 #include "rotary.h"
 
@@ -11,47 +13,44 @@ int Aarr[] = { 19, 18, 27, 28, 0 };
 int Barr[] = { 10, 20, 26, 29, 1 };
 
 int SWarr[] = { 6, 5, 4, 3, 2, 7, 8, 9 };
-
+int SWstates[] = { -1, -1, -1, -1, -1, -1, -1, -1 };
 std::vector<Encoder> encoders;
 
-bool SWDlock = false;
-bool SWUlock = false;
+uint8_t msg[4];
+
+bool SWlock = false;
 void initPin(int x);
 void gpio_callback(uint gpio, uint32_t events);
 
-
-bool rotlock = false;
-
-
-int64_t unlcokSWD(alarm_id_t id, __unused void* user_data) {
-    SWDlock = false;
-    return 0;
-}
-int64_t unlcokSWU(alarm_id_t id, __unused void* user_data) {
-    SWUlock = false;
+int64_t unlcokSW(alarm_id_t id, __unused void* user_data) {
+    SWlock = false;
     return 0;
 }
 
 
 int main() {
     stdio_init_all();
+    board_init();
+    tusb_init();
     for (int i = 0; i < 5; i++) {
         encoders.push_back(Encoder(
             Aarr[i],
             Barr[i],
-            [&i]() {printf("%d left\n", i);},
-            [&i]() {printf("%d right\n", i);},
+            [x = i + 1]() {printf("%d left\n", x);},
+            [x = i + 1]() {printf("%d right\n", x);},
             &gpio_callback
         ));
     }
 
     for (int i = 0; i < 8; i++) {
         initPin(SWarr[i]);
+        //SWstates[i] = gpio_get(SWarr[i]);
         gpio_set_irq_enabled_with_callback(SWarr[i], GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
     }
 
     while (true) {
-        sleep_ms(10);
+        tud_task();
+        sleep_ms(2);
     }
 }
 
@@ -66,23 +65,27 @@ void gpio_callback(uint gpio, uint32_t events) {
         }
     }
 
-    if (sw >= 0 && events & GPIO_IRQ_EDGE_FALL && !SWDlock) {
-        SWDlock = true;
-        if (sw < 5) {
-            printf("rot%d down\n", sw + 1);
-        } else {
-            printf("SW%d down\n", sw - 4);
+    if (sw >= 0 && !SWlock) {
+        if (events & GPIO_IRQ_EDGE_FALL && (SWstates[sw] == 1 || SWstates[sw] == -1)) {
+            SWlock = true;
+            msg[0] = 0x09;
+            msg[1] = 0x90;
+            msg[2] = 1;
+            msg[3] = 0x7F;
+            tud_midi_n_stream_write(0, 0, msg, 4);
+            SWstates[sw] = 0;
+        } else if (events & GPIO_IRQ_EDGE_RISE && SWstates[sw] == 0) {
+            SWlock = true;
+            msg[0] = 0x08;
+            msg[1] = 0x80;
+            msg[2] = 1;
+            msg[3] = 0x0; // Velocity
+            tud_midi_n_stream_write(0, 0, msg, 4);
+            SWstates[sw] = 1;
         }
-        add_alarm_in_ms(100, unlcokSWD, NULL, false);
-    } else if (sw >= 0 && events & GPIO_IRQ_EDGE_RISE && !SWUlock) {
-        SWUlock = true;
-        if (sw < 5) {
-            printf("rot%d up\n", sw + 1);
-        } else {
-            printf("SW%d up\n", sw - 4);
-        }
-        add_alarm_in_ms(100, unlcokSWU, NULL, false);
+        add_alarm_in_ms(10, unlcokSW, NULL, false);
     }
+
 
 
 }
@@ -94,3 +97,5 @@ void initPin(int x) {
     gpio_set_dir(x, GPIO_IN);
     gpio_pull_up(x);
 }
+
+
