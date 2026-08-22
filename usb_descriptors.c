@@ -38,7 +38,7 @@ tusb_desc_device_t const desc_device =
     .bDeviceProtocol = 0x00,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
 
-    .idVendor = 0xCafe,
+    .idVendor = 0x2E8A,
     .idProduct = USB_PID,
     .bcdDevice = 0x0100,
 
@@ -97,8 +97,8 @@ char const* string_desc_arr[] =
   (const char[]) {
  0x09, 0x04
 },
-"Grilled Cheese Engineering",                     // 1: Manufacturer
-"Feature Pad",              // 2: Product
+"GCE",                     // 1: Manufacturer
+"Feature Deck",              // 2: Product
 "kb2040",                      // 3: Serials, should use chip ID
 };
 static uint16_t _desc_str[32];

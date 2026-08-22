@@ -14,6 +14,9 @@ int Barr[] = { 10, 20, 26, 29, 1 };
 
 int SWarr[] = { 6, 5, 4, 3, 2, 7, 8, 9 };
 int SWstates[] = { -1, -1, -1, -1, -1, -1, -1, -1 };
+
+int rotStates[] = { 0, 0, 0, 0, 0 };
+
 std::vector<Encoder> encoders;
 
 uint8_t msg[3];
@@ -37,22 +40,44 @@ int main() {
             Aarr[i],
             Barr[i],
             [x = i + 1]() {
+                if (rotStates[x - 1] == 0) {
+                    rotStates[x - 1] = 127;
+                } else {
+                    rotStates[x - 1]--;
+                }
                 uint8_t msg[3];
                 msg[0] = 0x90;
                 msg[1] = (x * 2) - 2;
                 msg[2] = 127;
                 tud_midi_n_stream_write(0, 0, msg, 3);
+
+                msg[0] = 0xB0;
+                msg[1] = 101 + x;
+                msg[2] = rotStates[x - 1];
+                tud_midi_n_stream_write(0, 0, msg, 3);
+
                 msg[0] = 0x80;
                 msg[1] = (x * 2) - 2;
                 msg[2] = 0;
                 tud_midi_n_stream_write(0, 0, msg, 3);
 
             }, [x = i + 1]() {
+                if (rotStates[x - 1] == 127) {
+                    rotStates[x - 1] = 0;
+                } else {
+                    rotStates[x - 1]++;
+                }
                 uint8_t msg[3];
                 msg[0] = 0x90;
                 msg[1] = (x * 2) - 1;
                 msg[2] = 127;
                 tud_midi_n_stream_write(0, 0, msg, 3);
+
+                msg[0] = 0xB0;
+                msg[1] = 101 + x;
+                msg[2] = rotStates[x - 1];
+                tud_midi_n_stream_write(0, 0, msg, 3);
+
                 msg[0] = 0x80;
                 msg[1] = (x * 2) - 1;
                 msg[2] = 0;

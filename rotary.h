@@ -7,6 +7,7 @@
 #include <string>
 #include <format>
 #include <string_view>
+#include <stdint.h>
 
 class Encoder {
 public:
